@@ -19,44 +19,44 @@ public class FileUploadController {
     private ChatPDFService chatPDFService;
 
     @PostMapping("/upload-pdf")
-    public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<Object> uploadFile(@RequestParam("file") MultipartFile file) {
         logger.info("Iniciando carga del archivo: {}", file.getOriginalFilename());
         try {
-            String response = chatPDFService.processPDF(file);
+            Object response = chatPDFService.processPDF(file);
             logger.info("Respuesta del sistema al cargar el archivo: {}", response);
-            return ResponseEntity.ok("Archivo cargado exitosamente. Respuesta: " + response);
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error al cargar el archivo: {}", file.getOriginalFilename(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error al cargar el archivo: " + e.getMessage());
+                    .body(e);
         }
     }
 
     @GetMapping("/query")
-    public ResponseEntity<String> queryDocument(@RequestParam("question") String question, @RequestParam("sessionId") String sessionId) {
+    public ResponseEntity<Object> queryDocument(@RequestParam("question") String question, @RequestParam("sessionId") String sessionId) {
         logger.info("Realizando consulta: {}", question);
         try {
-            String response = chatPDFService.queryPDF(question, sessionId);
+            Object response = chatPDFService.queryPDF(question, sessionId);
             logger.info("Respuesta del sistema para la consulta: {}", response);
-            return ResponseEntity.ok("Respuesta del sistema: " + response);
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error al realizar la consulta: {}", question, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error al realizar la consulta: " + e.getMessage());
+                    .body(e);
         }
     }
 
     @DeleteMapping("/delete")
-    public ResponseEntity<String> deleteDocument(@RequestParam("documentId") String documentId) {
+    public ResponseEntity<Object> deleteDocument(@RequestParam("documentId") String documentId) {
         logger.info("Solicitando eliminación del documento: {}", documentId);
         try {
-            String response = chatPDFService.deletePDF(documentId);
+            Object response = chatPDFService.deletePDF(documentId);
             logger.info("Respuesta del sistema al eliminar el documento: {}", response);
-            return ResponseEntity.ok("Documento eliminado exitosamente. Respuesta: " + response);
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error al eliminar el documento: {}", documentId, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error al eliminar el documento: " + e.getMessage());
+                    .body(e);
         }
     }
 }

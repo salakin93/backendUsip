@@ -30,7 +30,7 @@ public class ChatPDFService {
         this.restTemplate = restTemplate;
     }
 
-    public String processPDF(MultipartFile file) throws IOException {
+    public Object processPDF(MultipartFile file) throws IOException {
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("file", new ByteArrayResource(file.getBytes()) {
             @Override
@@ -49,7 +49,7 @@ public class ChatPDFService {
         return response.getBody();
     }
 
-    public String queryPDF(String question, String sessionId) {
+    public Object queryPDF(String question, String sessionId) {
         HttpHeaders headers = new HttpHeaders();
         headers.set("x-api-key", apiKey);
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -70,7 +70,7 @@ public class ChatPDFService {
         return response.getBody();
     }
 
-    public String deletePDF(String documentId) {
+    public Object deletePDF(String documentId) {
         HttpHeaders headers = new HttpHeaders();
         headers.set("x-api-key", apiKey);
 

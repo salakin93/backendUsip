@@ -1,9 +1,11 @@
 package edu.usip.library.Chat.service;
 
+import edu.usip.library.Chat.dto.response.AIChatPdfResponseDTO;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.*;
@@ -35,6 +37,9 @@ public class ChatPDFService {
     @Value("${storage.directory}")
     private String storageDirectory;
 
+    @Autowired
+    private DocumentService documentService;
+
     public ChatPDFService(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
     }
@@ -60,6 +65,10 @@ public class ChatPDFService {
                 apiUrl + "/sources/add-file", HttpMethod.POST, requestEntity, String.class);
 
         String pdfUrl = "http://localhost:8082/api/pdf/view?fileName=" + fileName;
+
+        AIChatPdfResponseDTO dataDocument = queryPDF("En este formato degree, author, title y defense date en el formato MMM yyyy", extractSourceId(response.getBody()));
+
+        documentService.save(documentService.fillDocumentFromContent(dataDocument.getContent()));
 
         String sourceId = extractSourceId(response.getBody());
 
@@ -96,7 +105,7 @@ public class ChatPDFService {
         }
     }
 
-    public Object queryPDF(String question, String sessionId) {
+    public AIChatPdfResponseDTO queryPDF(String question, String sessionId) {
         HttpHeaders headers = new HttpHeaders();
         headers.set("x-api-key", apiKey);
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -111,8 +120,8 @@ public class ChatPDFService {
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 
-        ResponseEntity<String> response = restTemplate.exchange(
-                apiUrl + "/chats/message", HttpMethod.POST, entity, String.class);
+        ResponseEntity<AIChatPdfResponseDTO> response = restTemplate.exchange(
+                apiUrl + "/chats/message", HttpMethod.POST, entity, AIChatPdfResponseDTO.class);
 
         return response.getBody();
     }

@@ -70,6 +70,22 @@ public class ChatPDFService {
         return result;
     }
 
+    public Object addPdfUrl(String pdfUrl) throws Exception {
+        Map<String, String> body = new HashMap<>();
+        body.put("url", pdfUrl);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("x-api-key", apiKey);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        HttpEntity<Map<String, String>> entity = new HttpEntity<>(body, headers);
+
+        ResponseEntity<Object> response = restTemplate.exchange(
+                apiUrl + "/sources/add-url", HttpMethod.POST, entity, Object.class);
+
+        return response.getBody();
+    }
+
     private String extractSourceId(String responseBody) {
         try {
             JSONObject jsonResponse = new JSONObject(responseBody);

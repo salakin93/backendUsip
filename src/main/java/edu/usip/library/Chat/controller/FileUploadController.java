@@ -7,14 +7,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/pdf")
@@ -22,7 +22,7 @@ public class FileUploadController {
 
     private static final Logger logger = LoggerFactory.getLogger(FileUploadController.class);
 
-    @Value("X:\\Workspace\\JAVA_RECAUDACIONES\\backendUsip\\src\\main\\resources\\templates")
+    @Value("${storage.directory}")
     private String storageDirectory;
 
     @Autowired
@@ -39,6 +39,22 @@ public class FileUploadController {
             logger.error("Error al cargar el archivo: {}", file.getOriginalFilename(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(e);
+        }
+    }
+
+    @PostMapping("/add-url")
+    public ResponseEntity<Object> addPdfUrl(@RequestBody Map<String, String> requestData) {
+        logger.info("Iniciando carga de la URL: {}", requestData.get("url"));
+
+        try {
+            // Llamamos al servicio para agregar la URL
+            Object response = chatPDFService.addPdfUrl(requestData.get("url"));
+
+            logger.info("Respuesta del sistema: {}", response);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Error al cargar la URL del PDF", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e);
         }
     }
 

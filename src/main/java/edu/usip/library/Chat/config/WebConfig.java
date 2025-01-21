@@ -1,8 +1,8 @@
 package edu.usip.library.Chat.config;
 
-import com.mongodb.lang.NonNull;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.lang.NonNull;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 

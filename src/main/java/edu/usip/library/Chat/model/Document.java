@@ -24,4 +24,8 @@ public class Document {
 
     @Column(name = "defense", nullable = false)
     private LocalDate defense;
+
+    @Lob
+    @Column(name = "Summary", nullable = false)
+    private String summary;
 }

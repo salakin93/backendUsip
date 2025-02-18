@@ -1,6 +1,6 @@
 plugins {
 	id 'java'
-	id 'org.springframework.boot' version '3.1.4'
+	id 'org.springframework.boot' version '3.2.2' // 🔹 Usa la última versión estable
 	id 'io.spring.dependency-management' version '1.1.4'
 }
 
@@ -9,7 +9,7 @@ version = '0.0.1-SNAPSHOT'
 
 java {
 	toolchain {
-		languageVersion = JavaLanguageVersion.of(21)
+		languageVersion = JavaLanguageVersion.of(21)  // ✅ Asegurar Java 21
 	}
 }
 
@@ -21,18 +21,17 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
 	implementation 'com.fasterxml.jackson.core:jackson-databind'
-	implementation group: 'org.json', name: 'json', version: '20241224'
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'  // ✅ Spring Data JPA
+	implementation 'org.postgresql:postgresql'  // ✅ PostgreSQL
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
+	implementation 'io.swagger.core.v3:swagger-annotations:2.2.20'
 
-	// Añadido: Dependencias para Spring Data JPA y PostgreSQL
-	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'  // Para JPA
-	implementation 'org.postgresql:postgresql'  // Driver de PostgreSQL
-
-	// Lombok (opcional, pero útil para simplificar el código)
+	// Lombok (para reducir código repetitivo)
 	compileOnly 'org.projectlombok:lombok:1.18.30'
 	annotationProcessor 'org.projectlombok:lombok:1.18.30'
-	testCompileOnly 'org.projectlombok:lombok:1.18.30'
-	testAnnotationProcessor 'org.projectlombok:lombok:1.18.30'
 
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

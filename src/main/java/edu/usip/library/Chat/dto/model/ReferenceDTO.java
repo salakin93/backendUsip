@@ -1,4 +1,4 @@
-package edu.usip.library.Chat.dto.response;
+package edu.usip.library.Chat.dto.model;
 
 import lombok.Data;
 

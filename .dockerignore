@@ -1,0 +1,11 @@
+# Ignorar archivos innecesarios
+.gradle
+build/
+.git
+.idea
+*.iml
+*.log
+*.class
+/target/
+out/
+.DS_Store

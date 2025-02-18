@@ -9,12 +9,7 @@ import java.util.List;
 @Repository
 public interface  DocumentRepository extends JpaRepository<Document, Long> {
 
-    List<Document> findByDegreeContainingIgnoreCase(String degree);
+    List<Document> findBySummaryContainingIgnoreCase(String summary);
 
     List<Document> findByTitleContainingIgnoreCase(String title);
-
-    List<Document> findByAuthorContainingIgnoreCase(String author);
-
-    List<Document> findByDegreeContainingIgnoreCaseAndTitleContainingIgnoreCaseAndAuthorContainingIgnoreCase(
-            String degree, String title, String author);
 }

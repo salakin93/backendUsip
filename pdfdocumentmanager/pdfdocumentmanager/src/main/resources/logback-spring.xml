@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- ========================= -->
+    <!-- Properties -->
+    <!-- ========================= -->
+    <property name="APP_NAME" value="pdf-document-manager"/>
+    <property name="LOG_PATH" value="logs/${APP_NAME}"/>
+    <property name="LOG_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss} [%X{traceId}] %-5level %logger{36} - %msg%n"/>
+
+    <!-- ========================= -->
+    <!-- Console Appender -->
+    <!-- ========================= -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <!-- ========================= -->
+    <!-- Rolling File Appender -->
+    <!-- ========================= -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/application.log</file>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- Un archivo por día -->
+            <fileNamePattern>
+                ${LOG_PATH}/application-%d{yyyy-MM-dd}.log
+            </fileNamePattern>
+
+            <!-- Retención -->
+            <maxHistory>30</maxHistory>
+
+            <!-- Tamaño máximo total -->
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <!-- ========================= -->
+    <!-- Root Logger -->
+    <!-- ========================= -->
+    <root level="INFO">
+        <appender-ref ref="STDOUT"/>
+        <appender-ref ref="FILE"/>
+    </root>
+
+</configuration>

@@ -1,5 +1,6 @@
 package edu.usip.pdfdocumentmanager.security;
 
+import edu.usip.pdfdocumentmanager.model.AppUser;
 import edu.usip.pdfdocumentmanager.service.UserService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -25,8 +26,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
-            throws ServletException, IOException {
+    protected void doFilterInternal(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain chain
+    ) throws ServletException, IOException {
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            chain.doFilter(request, response);
+            return;
+        }
 
         String header = request.getHeader("Authorization");
         if (header == null || !header.startsWith("Bearer ")) {
@@ -34,38 +42,43 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        String token = header.substring("Bearer ".length());
+        if (SecurityContextHolder.getContext().getAuthentication() != null) {
+            chain.doFilter(request, response);
+            return;
+        }
+
+        String token = header.substring("Bearer ".length()).trim();
+
         try {
             String phone = jwtUtil.extractUsername(token);
 
-            var user = userService.getAllUsers().stream()
-                    .filter(u -> u.getPhone().equals(phone))
-                    .findFirst()
-                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+            AppUser user = userService.getUserByPhoneOrThrow(phone);
 
             if (!user.isActive()) {
                 throw new RuntimeException("Usuario desactivado");
             }
 
             Set<SimpleGrantedAuthority> authorities = jwtUtil.extractRoles(token).stream()
-                    .map(r -> new SimpleGrantedAuthority(r.name().replace("ROLE_", "")))
+                    .map(role -> new SimpleGrantedAuthority(role.name()))
                     .collect(Collectors.toSet());
 
-            SecurityContextHolder.getContext().setAuthentication(
-                    new UsernamePasswordAuthenticationToken(phone, null, authorities)
-            );
+            UsernamePasswordAuthenticationToken auth =
+                    new UsernamePasswordAuthenticationToken(phone, null, authorities);
+
+            SecurityContextHolder.getContext().setAuthentication(auth);
+
+            chain.doFilter(request, response);
 
         } catch (Exception e) {
             SecurityContextHolder.clearContext();
-            // Configurar JSON de error
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json");
-            response.getWriter().write(
-                    "{\"error\": \"" + e.getMessage().replace("\"", "'") + "\"}"
-            );
-            return; // detener la cadena de filtros
+            response.getWriter().write("{\"error\":\"" + sanitize(e.getMessage()) + "\"}");
         }
+    }
 
-        chain.doFilter(request, response);
+    private String sanitize(String msg) {
+        if (msg == null) return "Unauthorized";
+        return msg.replace("\"", "'").replace("\n", " ").replace("\r", " ");
     }
 }

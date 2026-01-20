@@ -96,4 +96,18 @@ public class UserService {
     public boolean exists(String phone) {
         return userRepository.findByPhone(phone).isPresent();
     }
+
+    public AppUser getUserByPhoneOrThrow(String phone) {
+        return userRepository.findByPhone(phone)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+    }
+
+    public AppUser getActiveUserByPhoneOrThrow(String phone) {
+        AppUser user = getUserByPhoneOrThrow(phone);
+        if (!user.isActive()) {
+            throw new RuntimeException("Usuario desactivado");
+        }
+        return user;
+    }
+
 }

@@ -9,10 +9,5 @@ import java.util.Optional;
 @Repository
 public interface UserRepository extends JpaRepository<AppUser, Long> {
 
-    /**
-     * Buscar usuario por número de teléfono
-     * @param phone teléfono del usuario
-     * @return AppUser envuelto en Optional
-     */
     Optional<AppUser> findByPhone(String phone);
 }

@@ -1,45 +1,62 @@
 package edu.usip.pdfdocumentmanager.security;
 
 import edu.usip.pdfdocumentmanager.model.Role;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.JwtException;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
-import org.springframework.stereotype.Component;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 @Component
 public class JwtUtil {
 
-    private final Key key;
+    private final String secret;
     private final long expirationMs;
+    private Key key;
 
     public JwtUtil(@Value("${jwt.secret}") String secret,
                    @Value("${jwt.expiration-ms}") long expirationMs) {
-        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        this.secret = secret;
         this.expirationMs = expirationMs;
     }
 
+    @PostConstruct
+    void init() {
+        if (secret == null || secret.getBytes(StandardCharsets.UTF_8).length < 32) {
+            throw new IllegalStateException("jwt.secret debe tener al menos 32 caracteres (HS256).");
+        }
+        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+    }
+
     public String generateToken(String username, Set<Role> roles) {
-        var rolesAsString = roles.stream().map(Role::name).collect(Collectors.toList());
+        List<String> rolesAsString = roles.stream()
+                .map(Role::name)
+                .collect(Collectors.toList());
+
+        long now = System.currentTimeMillis();
+
         return Jwts.builder()
                 .setSubject(username)
                 .claim("roles", rolesAsString)
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + expirationMs))
+                .setIssuedAt(new Date(now))
+                .setExpiration(new Date(now + expirationMs))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
 
     public Claims validateToken(String token) throws JwtException {
-        return Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
+        return Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
     }
 
     public String extractUsername(String token) {
@@ -48,7 +65,12 @@ public class JwtUtil {
 
     @SuppressWarnings("unchecked")
     public Set<Role> extractRoles(String token) {
-        var roles = (java.util.List<String>) validateToken(token).get("roles");
-        return roles.stream().map(Role::valueOf).collect(Collectors.toSet());
+        Object raw = validateToken(token).get("roles");
+        if (raw == null) return Set.of();
+
+        List<String> roles = (List<String>) raw;
+        return roles.stream()
+                .map(Role::valueOf)
+                .collect(Collectors.toSet());
     }
 }

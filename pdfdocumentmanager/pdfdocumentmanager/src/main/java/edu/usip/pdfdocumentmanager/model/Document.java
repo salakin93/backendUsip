@@ -55,6 +55,9 @@ public class Document {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Column(name = "chatpdf_source_id")
+    private String chatPdfSourceId;
+
     @PrePersist
     void onCreate() {
         this.createdAt = LocalDateTime.now();

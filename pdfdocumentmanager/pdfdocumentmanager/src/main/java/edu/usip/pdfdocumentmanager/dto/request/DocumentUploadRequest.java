@@ -30,7 +30,6 @@ public class DocumentUploadRequest {
     @Schema(example = "2024-11-15")
     private LocalDate defenseDate;
 
-    @NotBlank
-    @Schema(example = "DOC-2024-0001")
+    @Schema(example = "DOC-2024-0001", description = "Opcional. Si no se envía, el sistema genera uno.")
     private String sourceId;
 }

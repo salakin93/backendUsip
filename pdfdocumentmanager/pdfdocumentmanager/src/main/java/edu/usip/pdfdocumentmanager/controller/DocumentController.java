@@ -9,9 +9,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpHeaders;
@@ -36,7 +36,7 @@ public class DocumentController {
     public ResponseEntity<DocumentResponse> upload(
             @Parameter(description = "Datos del documento") @Valid @ModelAttribute DocumentUploadRequest request,
             @Parameter(description = "Archivo PDF") @RequestParam("file") MultipartFile file
-    ) {
+    ) throws IOException {
         Document document = documentService.upload(request, file);
         return ResponseEntity.ok(toResponse(document));
     }

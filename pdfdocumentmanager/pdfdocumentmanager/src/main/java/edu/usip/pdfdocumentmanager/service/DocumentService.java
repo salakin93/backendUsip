@@ -26,45 +26,46 @@ public class DocumentService {
     private final UserService userService;
 
     @Transactional
-    public Document upload(DocumentUploadRequest request, MultipartFile file) {
+    public Document upload(DocumentUploadRequest request, MultipartFile file) throws IOException {
 
-        if (file == null || file.isEmpty()) {
-            throw new RuntimeException("Archivo PDF es requerido");
-        }
-
-        if (file.getSize() > 35L * 1024 * 1024) {
+        if (file.getSize() > 35 * 1024 * 1024) {
             throw new RuntimeException("El archivo supera los 35MB");
         }
 
-        documentRepository.findBySourceId(request.getSourceId()).ifPresent(d -> {
-            throw new RuntimeException("Ya existe un documento con sourceId: " + request.getSourceId());
+        String userPhone = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        // ✅ asegura usuario activo (evita nulls y valida negocio)
+        var user = userService.getUserByPhoneOrThrow(userPhone);
+
+        // ✅ sourceId opcional, si no viene se genera
+        String sourceId = (request.getSourceId() != null && !request.getSourceId().isBlank())
+                ? request.getSourceId()
+                : java.util.UUID.randomUUID().toString();
+
+        // ✅ evitar duplicados por sourceId
+        documentRepository.findBySourceId(sourceId).ifPresent(d -> {
+            throw new RuntimeException("Ya existe un documento con sourceId=" + sourceId);
         });
 
-        String authPhone = SecurityContextHolder.getContext().getAuthentication().getName();
-        String createdBy = userService.getActiveUserByPhoneOrThrow(authPhone).getName();
-
-        String storagePath;
-        try {
-            storagePath = storageService.storeFile(file, request.getSourceId());
-        } catch (IOException e) {
-            throw new RuntimeException("No se pudo guardar el archivo", e);
-        }
+        // ✅ guarda el archivo
+        String storagePath = storageService.storeFile(file, sourceId);
 
         Document document = Document.builder()
                 .title(request.getTitle())
                 .author(request.getAuthor())
                 .degree(request.getDegree())
                 .defenseDate(request.getDefenseDate())
-                .sourceId(request.getSourceId())
+                .sourceId(sourceId)
                 .fileName(file.getOriginalFilename())
                 .storagePath(storagePath)
                 .size(file.getSize())
-                .createdBy(createdBy)
+                .createdBy(user.getName()) // o user.getName()
                 .active(true)
                 .build();
 
         return documentRepository.save(document);
     }
+
 
     @Transactional(readOnly = true)
     public Page<Document> search(String title, String author, String degree, Pageable pageable) {
@@ -77,7 +78,7 @@ public class DocumentService {
         Specification<Document> authorSpec = DocumentSpecification.authorContains(author);
         if (authorSpec != null) spec = spec.and(authorSpec);
 
-        Specification<Document> degreeSpec = DocumentSpecification.degreeEquals(degree);
+        Specification<Document> degreeSpec = DocumentSpecification.degreeContains(degree);
         if (degreeSpec != null) spec = spec.and(degreeSpec);
 
         return documentRepository.findAll(spec, pageable);

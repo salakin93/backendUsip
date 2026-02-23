@@ -60,9 +60,9 @@ public class Document {
 
     @PrePersist
     void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = this.createdAt;
-        if (!this.active) this.active = true;
+        if (this.createdAt == null) this.createdAt = LocalDateTime.now();
+        if (this.updatedAt == null) this.updatedAt = this.createdAt;
+        this.active = true;
     }
 
     @PreUpdate

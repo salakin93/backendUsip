@@ -21,9 +21,9 @@ public class DocumentSpecification {
         return (root, query, cb) -> cb.like(cb.lower(root.get("author")), like);
     }
 
-    public static Specification<Document> degreeEquals(String degree) {
+    public static Specification<Document> degreeContains(String degree) {
         if (degree == null || degree.isBlank()) return null;
-        String value = degree.trim();
-        return (root, query, cb) -> cb.equal(root.get("degree"), value);
+        String like = "%" + degree.trim().toLowerCase() + "%";
+        return (root, query, cb) -> cb.like(cb.lower(root.get("degree")), like);
     }
 }

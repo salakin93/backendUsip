@@ -8,6 +8,7 @@ import edu.usip.pdfdocumentmanager.dto.response.ChatPdfReference;
 import edu.usip.pdfdocumentmanager.model.Document;
 import edu.usip.pdfdocumentmanager.repository.DocumentRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
@@ -22,12 +23,14 @@ import java.util.*;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ChatPdfService {
 
     private final ChatPdfProperties props;
     private final DocumentRepository documentRepository;
     private final DocumentService documentService;
     private final FileStorageService storageService;
+    private final ChatPdfLogService chatPdfLogService;
 
     private RestClient restClient() {
         return RestClient.builder()
@@ -38,6 +41,7 @@ public class ChatPdfService {
 
     /**
      * Asegura que el documento tenga chatPdfSourceId (sube el PDF a ChatPDF si es necesario).
+     * OJO: este método ES de escritura, por eso lleva @Transactional normal.
      */
     @Transactional
     public String ensureSourceId(Long documentId) {
@@ -62,13 +66,20 @@ public class ChatPdfService {
 
     /**
      * Envía una pregunta (y opcional historial) a ChatPDF.
+     * readOnly porque no debería depender de una transacción para un call externo.
      */
     @Transactional(readOnly = true)
     public ChatPdfAnswerResponse ask(Long documentId, ChatPdfQuestionRequest request) {
-        Document doc = documentService.getById(documentId);
-        String sourceId = doc.getChatPdfSourceId();
 
+        if (request == null || request.getQuestion() == null || request.getQuestion().isBlank()) {
+            throw new RuntimeException("La pregunta no puede estar vacía");
+        }
+
+        Document doc = documentService.getById(documentId);
+
+        String sourceId = doc.getChatPdfSourceId();
         if (sourceId == null || sourceId.isBlank()) {
+            // Este método maneja su propia transacción de escritura
             sourceId = ensureSourceId(documentId);
         }
 
@@ -87,14 +98,38 @@ public class ChatPdfService {
                 .retrieve()
                 .body(ChatPdfChatApiResponse.class);
 
-        if (apiResponse == null || apiResponse.getContent() == null) {
+        if (apiResponse == null || apiResponse.getContent() == null || apiResponse.getContent().isBlank()) {
             throw new RuntimeException("Respuesta vacía de ChatPDF");
         }
 
-        return ChatPdfAnswerResponse.builder()
+        var references = apiResponse.getReferences() == null
+                ? List.<ChatPdfReference>of()
+                : apiResponse.getReferences();
+
+        ChatPdfAnswerResponse response = ChatPdfAnswerResponse.builder()
                 .answer(apiResponse.getContent())
-                .references(apiResponse.getReferences() == null ? List.of() : apiResponse.getReferences())
+                .references(references)
                 .build();
+
+        // ✅ Guardar auditoría en transacción separada para NO romper el chat
+        try {
+            var pages = references.stream()
+                    .map(ChatPdfReference::getPageNumber)
+                    .filter(Objects::nonNull)
+                    .toList();
+
+            chatPdfLogService.saveLogRequiresNew(
+                    doc.getId(),
+                    request.getQuestion(),
+                    apiResponse.getContent(),
+                    pages
+            );
+
+        } catch (Exception e) {
+            log.warn("No se pudo guardar chat log (se ignora para no afectar la respuesta).", e);
+        }
+
+        return response;
     }
 
     private List<Map<String, String>> buildMessages(ChatPdfQuestionRequest request) {
@@ -103,11 +138,15 @@ public class ChatPdfService {
             for (ChatPdfMessage m : request.getMessages()) {
                 out.add(Map.of("role", m.getRole(), "content", m.getContent()));
             }
+
             boolean hasUserQuestion = request.getMessages().stream()
-                    .anyMatch(m -> "user".equalsIgnoreCase(m.getRole()) && Objects.equals(m.getContent(), request.getQuestion()));
+                    .anyMatch(m -> "user".equalsIgnoreCase(m.getRole())
+                            && Objects.equals(m.getContent(), request.getQuestion()));
+
             if (!hasUserQuestion) {
                 out.add(Map.of("role", "user", "content", request.getQuestion()));
             }
+
             if (out.size() > 6) {
                 out = out.subList(out.size() - 6, out.size());
             }
@@ -159,9 +198,6 @@ public class ChatPdfService {
         return fileName.replaceAll("[\\\\/\\r\\n\\t\"]", "_");
     }
 
-    /**
-     * Helper para multipart con nombre de archivo.
-     */
     private static class NamedByteArrayResource extends ByteArrayResource {
         private final String filename;
 
@@ -176,9 +212,6 @@ public class ChatPdfService {
         }
     }
 
-    /**
-     * Modelos internos para deserializar la respuesta de ChatPDF.
-     */
     @lombok.Getter
     @lombok.Setter
     private static class ChatPdfUploadApiResponse {

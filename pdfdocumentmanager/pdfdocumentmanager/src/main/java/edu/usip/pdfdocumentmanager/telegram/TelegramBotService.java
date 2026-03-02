@@ -52,7 +52,7 @@ public class TelegramBotService {
         if (!sessionStore.isLoggedIn(telegramUserId)) {
             telegramApiClient.sendMessage(
                     chatId,
-                    "Hola 👋 Para continuar necesito tu número.\nPulsa: 📲 Compartir mi número",
+                    "Hola 👋 Para continuar necesito tu número.\nPulsa: 📲 **Compartir mi número**",
                     requestContactKeyboard()
             );
             return;
@@ -98,7 +98,7 @@ public class TelegramBotService {
 
             boolean isAdmin = roles.contains(Role.ROLE_ADMIN);
             telegramApiClient.sendMessage(chatId,
-                    "✅ Login exitoso.\nRol: " + (isAdmin ? "ADMIN" : "STUDENT") + "\n\nSelecciona una opción:",
+                    "✅ Login exitoso.\nRol: " + (isAdmin ? Role.ROLE_ADMIN.getDisplayName() : Role.ROLE_STUDENT.getDisplayName()) + "\n\nSelecciona una opción:",
                     isAdmin ? adminMenu() : studentMenu()
             );
 
@@ -152,7 +152,7 @@ public class TelegramBotService {
                 }
                 sessionStore.clearTempOnly(telegramUserId);
                 sessionStore.setState(telegramUserId, BotState.ADMIN_WAITING_NEWUSER_NAME);
-                telegramApiClient.sendMessage(chatId, "👤 Crear usuario\nEnvía el *nombre* del nuevo usuario:");
+                telegramApiClient.sendMessage(chatId, "👤 Crear usuario\nEnvía el **nombre** del nuevo usuario:");
             }
             case "USER_DISABLE" -> {
                 if (!isAdmin) {
@@ -160,7 +160,7 @@ public class TelegramBotService {
                     return;
                 }
                 sessionStore.setState(telegramUserId, BotState.ADMIN_WAITING_DISABLE_PHONE);
-                telegramApiClient.sendMessage(chatId, "⛔ Deshabilitar usuario\nEnvía el *teléfono* a deshabilitar:");
+                telegramApiClient.sendMessage(chatId, "⛔ Deshabilitar usuario\nEnvía el **teléfono** a deshabilitar:");
             }
 
             // ✅ VOLVER AL MENÚ
@@ -183,6 +183,17 @@ public class TelegramBotService {
             }
 
             case "HELP" -> telegramApiClient.sendMessage(chatId, helpText(isAdmin));
+            case "CHATPDF_EXIT" -> {
+                sessionStore.setState(telegramUserId, BotState.IDLE);
+                sessionStore.clearTempOnly(telegramUserId); // limpia docId
+
+                telegramApiClient.sendMessage(
+                        chatId,
+                        "✅ Saliste del modo chat.",
+                        isAdmin ? adminMenu() : studentMenu()
+                );
+            }
+
             default -> {
                 if (data != null && data.startsWith("DOC_DL:")) {
                     Long docId = Long.parseLong(data.substring("DOC_DL:".length()));
@@ -216,7 +227,9 @@ public class TelegramBotService {
             req.setRole(role);
 
             var created = backendApiClient.createUser(s.jwt(), req);
-            telegramApiClient.sendMessage(chatId, "✅ Usuario creado: " + created.getName() + " (" + created.getRole() + ")");
+            telegramApiClient.sendMessage(chatId,
+                    "✅ Usuario creado: " + created.getName() +
+                            " (" + created.getRole().getDisplayName() + ")");
         } catch (BackendUnauthorizedException e) {
             forceReLogin(chatId, telegramUserId);
             return;
@@ -283,22 +296,21 @@ public class TelegramBotService {
                 sessionStore.setState(telegramUserId, BotState.IDLE);
             }
 
-
             // UPLOAD: metadata
             case ADMIN_WAITING_TITLE -> {
                 sessionStore.putTemp(telegramUserId, "title", text);
                 sessionStore.setState(telegramUserId, BotState.ADMIN_WAITING_AUTHOR);
-                telegramApiClient.sendMessage(chatId, "Autor:");
+                telegramApiClient.sendMessage(chatId, "**Autor:**");
             }
             case ADMIN_WAITING_AUTHOR -> {
                 sessionStore.putTemp(telegramUserId, "author", text);
                 sessionStore.setState(telegramUserId, BotState.ADMIN_WAITING_DEGREE);
-                telegramApiClient.sendMessage(chatId, "Carrera (degree):");
+                telegramApiClient.sendMessage(chatId, "**Carrera:**");
             }
             case ADMIN_WAITING_DEGREE -> {
                 sessionStore.putTemp(telegramUserId, "degree", text);
                 sessionStore.setState(telegramUserId, BotState.ADMIN_WAITING_DEFENSE_DATE);
-                telegramApiClient.sendMessage(chatId, "Fecha de defensa (YYYY-MM-DD):");
+                telegramApiClient.sendMessage(chatId, "**Fecha de defensa (YYYY-MM-DD):**");
             }
             case ADMIN_WAITING_DEFENSE_DATE -> {
                 // ✅ validar formato ISO
@@ -403,10 +415,12 @@ public class TelegramBotService {
                                     }
                                 });
 
-                        telegramApiClient.sendMessage(chatId, refs.toString());
+                        telegramApiClient.sendMessage(
+                                chatId,
+                                refs.toString(),
+                                chatPdfExitMenu()
+                        );
                     }
-
-
                 } catch (BackendUnauthorizedException e) {
                     forceReLogin(chatId, telegramUserId);
                 } catch (Exception e) {
@@ -448,7 +462,7 @@ public class TelegramBotService {
             sessionStore.setPendingPdf(telegramUserId, bytes, doc.file_name());
             sessionStore.setState(telegramUserId, BotState.ADMIN_WAITING_TITLE);
 
-            telegramApiClient.sendMessage(chatId, "✅ PDF recibido.\nAhora envía el *título*:");
+            telegramApiClient.sendMessage(chatId, "✅ PDF recibido.\nAhora envía el **Título**:");
         } catch (Exception e) {
             telegramApiClient.sendMessage(chatId, "❌ No pude descargar el PDF desde Telegram: " + e.getMessage());
         }
@@ -524,8 +538,8 @@ public class TelegramBotService {
     private Map<String, Object> roleMenu() {
         return Map.of("inline_keyboard", List.of(
                 List.of(
-                        Map.of("text", "ADMIN", "callback_data", "ROLE_ADMIN"),
-                        Map.of("text", "STUDENT", "callback_data", "ROLE_STUDENT")
+                        Map.of("text", Role.ROLE_ADMIN.getDisplayName(), "callback_data", "ROLE_ADMIN"),
+                        Map.of("text", Role.ROLE_STUDENT.getDisplayName(), "callback_data", "ROLE_STUDENT")
                 )
         ));
     }
@@ -533,7 +547,7 @@ public class TelegramBotService {
     private Map<String, Object> requestContactKeyboard() {
         return Map.of(
                 "keyboard", List.of(
-                        List.of(Map.of("text", "📲 Compartir mi número", "request_contact", true))
+                        List.of(Map.of("text", "📲 **Compartir mi número**", "request_contact", true))
                 ),
                 "resize_keyboard", true,
                 "one_time_keyboard", true
@@ -567,7 +581,7 @@ public class TelegramBotService {
         sessionStore.clearSession(telegramUserId);
         telegramApiClient.sendMessage(
                 chatId,
-                "🔐 Tu sesión expiró o no es válida. Por favor inicia sesión nuevamente.\nPulsa: 📲 Compartir mi número",
+                "🔐 Tu sesión expiró o no es válida. Por favor inicia sesión nuevamente.\nPulsa: 📲 **Compartir mi número**",
                 requestContactKeyboard()
         );
     }
@@ -759,4 +773,15 @@ public class TelegramBotService {
         String[] parts = fullName.trim().split("\\s+");
         return parts[parts.length - 1]; // último como apellido
     }
+
+    private Map<String, Object> chatPdfExitMenu() {
+        return Map.of(
+                "inline_keyboard", List.of(
+                        List.of(
+                                Map.of("text", "🔙 Salir", "callback_data", "CHATPDF_EXIT")
+                        )
+                )
+        );
+    }
+
 }
